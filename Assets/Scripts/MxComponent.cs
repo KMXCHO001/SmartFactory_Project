@@ -49,6 +49,7 @@ namespace mxComponent
         public CylinderSensor gateCyl_B;
 
         [Header("연결_로드시스템")]
+        public Sensor endSensor_L;
         public DataRead_Cyl xTransfer;
         public DataRead_Cyl LMTransfer;
         public DataRead_Cyl zTransfer;
@@ -62,6 +63,13 @@ namespace mxComponent
         public CylinderSensor loadCylinder_F;
         public CylinderSensor loadCylinder_B;
 
+        //조건부로 만들기위한 막만든 변수 //06.19/14:11
+        int datasend = 0;
+        int ditecd = 0;
+        int ditecdar = 0;
+        int ditecdal = 0;
+        int ditecdgate_B = 0;
+        int ditecdclose = 0;
         private void Awake()//인스턴스 지정
         {
             if (instance == null)
@@ -125,37 +133,67 @@ namespace mxComponent
                 connectImage.color = Color.red;
                 connectImage_UI.color = Color.red;
             }
+            if (arriveSensor_C.isObjectDetected && alignSensor_C.isObjectDetected == false && ditecdar <3) //3회 스캔 / 물품 도착시 스캔//06.19/14:11
+            {
+                 ditecd = 0;
+                 datasend = 0;
+                 ditecdar++;
+            }
+            if (arriveSensor_C.isObjectDetected && alignSensor_C.isObjectDetected && ditecdal <3) //3회 스캔/물품 정렬시 스캔//06.19/14:11
+            {  
+                ditecd = 0;
+                datasend = 0;
+                ditecdal ++;                
+            }
+            if(alignSensor_C.isObjectDetected&&gateCyl_B.isObjectDetected&& ditecdgate_B<3)//3회 스캔  /게이트 실린더 후진시 스캔 //06.19/14:11
+            {
+                ditecd = 0;
+                datasend = 0;
+                ditecdgate_B++;
+            }
+            if (closeSensor_C.isObjectDetected && gateCyl_B.isObjectDetected && ditecdclose < 3)//3회 스캔 /물품 이동확인시 스캔//06.19/14:11
+            {
+                ditecd = 0;
+                datasend = 0;
+                ditecdclose++;
+            }
         }
         IEnumerator GetTotalDeviceData()                                     //PLC 포트번호 GetDevice로 지정
          {
             if (connection == Connection.Connected)
             {
-                short[] xdata = ReadDeviceBlock("X0", 10);
-                short[] ydata = ReadDeviceBlock("Y0", 20); 
-                string new_xdata = ConvertDataIntoString(xdata);
-                string new_ydata = ConvertDataIntoString(ydata);
+                if (datasend == 0)//06.19/14:11
+                {
+                    print("데이터1");
+                    short[] xdata = ReadDeviceBlock("X0", 10);
+                    short[] ydata = ReadDeviceBlock("Y0", 20);
+                    string new_xdata = ConvertDataIntoString(xdata);
+                    string new_ydata = ConvertDataIntoString(ydata);
 
-                conveyor.plcInputValue = new_ydata[0]-48; //Y0
+                    conveyor.plcInputValue = new_ydata[0]-48; //Y0
 
-                pushCylinder.plcInputValue = new_ydata[20] - 48; //Y20
+                    pushCylinder.plcInputValue = new_ydata[20] - 48; //Y20
 
-                gateCylinder.plcInputValue = new_ydata[30] - 48; //Y30
+                    gateCylinder.plcInputValue = new_ydata[30] - 48; //Y30
 
-                arriveSensor_C.plcInputValue = new_xdata[1]-48; //X1
-                alignSensor_C.plcInputValue = new_xdata[2]-48; //X2
-                closeSensor_C.plcInputValue = new_xdata[3] - 48; //X3
+                    arriveSensor_C.plcInputValue = new_xdata[1]-48; //X1
+                    alignSensor_C.plcInputValue = new_xdata[2]-48; //X2
+                    closeSensor_C.plcInputValue = new_xdata[3] - 48; //X3
+                    endSensor_L.plcInputValue = new_xdata[4] - 48; //X4
+    
+                    xTransfer.plcInputValues[0] = new_ydata[40] - 48; //Y40
+                    xTransfer.plcInputValues[1] = new_ydata[41] - 48; //Y41
 
-                xTransfer.plcInputValues[0] = new_ydata[40] - 48; //Y40
-                xTransfer.plcInputValues[1] = new_ydata[41] - 48; //Y41
+                    LMTransfer.plcInputValues[0] = new_ydata[50] - 48; //Y50
+                    LMTransfer.plcInputValues[1] = new_ydata[51] - 48; //Y51
 
-                LMTransfer.plcInputValues[0] = new_ydata[50] - 48; //Y50
-                LMTransfer.plcInputValues[1] = new_ydata[51] - 48; //Y51
+                    zTransfer.plcInputValues[0] = new_ydata[60] - 48; //Y60
+                    zTransfer.plcInputValues[1] = new_ydata[61] - 48; //Y61
 
-                zTransfer.plcInputValues[0] = new_ydata[60] - 48; //Y60
-                zTransfer.plcInputValues[1] = new_ydata[61] - 48; //Y61
-
-                loadCylinder.plcInputValues[0] = new_ydata[70] - 48; //Y70
-                loadCylinder.plcInputValues[1] = new_ydata[71] - 48 ; //Y71
+                    loadCylinder.plcInputValues[0] = new_ydata[70] - 48; //Y70
+                    loadCylinder.plcInputValues[1] = new_ydata[71] - 48; //Y71
+                    datasend = 1;//06.19/14:11
+                }
             }
             yield return new WaitForSeconds(1);
           }
@@ -252,12 +290,22 @@ namespace mxComponent
             {
                 if (connection == Connection.Connected)
                 {
+                   
                     int returnValue = mxComponent.SetDevice(device, value);
 
                     if (returnValue != 0)
+                    {
+                    if (ditecd == 0)//06.19/14:11
+                    {
                         print(returnValue.ToString("X"));
+                        print("데이터 센서");
+                        ditecd=1;//06.19/14:11
+                    }
+                    }
+                        
 
                     return true;
+                                   
                 }
                 else
                     return false;
@@ -287,8 +335,9 @@ namespace mxComponent
 
                     SetDevice("X0", 1);
                 print("[PLC] PLC 연동을 시작합니다.");
+                datasend = 0;
                 }
-                else
+            else
                 {
                     SetDevice("X0", 0);
                 }
@@ -301,6 +350,8 @@ namespace mxComponent
             stopBtn.image.color = Color.red;
             SetDevice("X5", 1);
                 print("[PLC] PLC 연동을 중지합니다.");
+                datasend = 0;
+
             }
             else
             {
@@ -317,6 +368,8 @@ namespace mxComponent
 
                 SetDevice("X99", 1);
                 print("[PLC][Alert] PLC 비상 정지 버튼이 활성화되었습니다.");
+                datasend = 0;
+
             }
             else
             {

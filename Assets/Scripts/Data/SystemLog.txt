@@ -1,4 +1,0 @@
-[16:32:35] targetPos (X: 0.0000000, Y: 0.0000000, Z: -0.4200000)
-[16:32:35] LoadingSys_LM_Transfer - 후진 상태입니다
-[16:32:35] Conveyor_PushCylinder - 후진 상태입니다
-[16:32:35] Conveyor_GateCylinder - 전진 상태입니다
